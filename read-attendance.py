@@ -1,5 +1,5 @@
 import tabula
-import pandas as pd
+import pandas as pd, numpy as np
 import os
 import logging
 
@@ -10,6 +10,14 @@ console.setFormatter(logging.Formatter(str_format))
 
 log.addHandler(console)  # print to console
 log.setLevel(logging.DEBUG)
+
+
+def applyfunc(s):
+    if s == 'ABSENT:':
+        return s
+    elif s == 'PRESENT:':
+        return s
+    return ''
 
 
 def main():
@@ -27,11 +35,17 @@ def main():
     except IndexError:
         pass
     # df.columns = ['MP', 'Record', 'todrop']
-    df.columns = ['MP', 'Record']
-
+    df.columns = ['MP', 'Record1']
+    df_obj = df.select_dtypes(['object'])  # Strip whitespace
+    df[df_obj.columns] = df_obj.apply(lambda x: x.str.strip())
+    df['Record2'] = df['MP'].apply(applyfunc)
+    df['Record3'] = df['Record1'].apply(applyfunc)
+    df['Record'] = df['Record2'] + df['Record3']
+    df.drop(columns=['Record1', 'Record2', 'Record3'], axis=1, inplace=True)
+    df['Record'][df['Record'] == ""] = np.NaN
     df['Record'].ffill(axis=0, inplace=True)
     df['Date'] = pd.to_datetime(df['Record'].loc[df.loc[df['Record'] == 'PRESENT:'].index[0]-2])
-    df = df[(df['Record'].str.strip() == 'PRESENT:') | (df['Record'].str.strip() == 'ABSENT:')]
+    df = df[(df['Record'] == 'PRESENT:') | (df['Record'] == 'ABSENT:')]
     df = df[df['MP'].notna()]
     titles = ['Assoc', 'Dr', 'Miss', 'Mr', 'Ms', 'Mrs']
     df = df[df['MP'].str.split(' ').str[0].isin(titles)]
